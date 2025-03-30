@@ -32,15 +32,19 @@ window_size = int(0.250 * fs)
 rms = calcular_rms(tk_signal, window_size)
 t_rms = tk_time[:len(rms)]
 
+# Graficar el TK y la senal con RMS aplicado
 graficar_teager_y_rms(tk_time, tk_signal, t_rms, rms)
 
 # Detectar onsets y offsets en el RMS
 onsets, offsets, ratio_usado, threshold = detectar_onset_offset_auto(rms, t_rms)
+# Verificar onset y offset y ver puntos
 print("Onset times:", t_rms[onsets])
 print("Offset times:", t_rms[offsets])
 
+# Graficar onset y offset con zoom para evidenciar puntos de inicio y final
 graficar_zoom_contracciones(t_rms, rms, onsets, offsets, zoom_duracion=2)
 
+# Conjunto de graficar de todos los pasos aplicados en el proceso de filtrado de la senal
 graficar_resultados_emg(
     t_recortado,
     emg_recortada,

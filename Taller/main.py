@@ -43,12 +43,18 @@ def cargar_senal(filepath, tipo='mat', variable='emg', fs=None):
 
 
 def filtrar_senal(signal, fs, lowcut, highcut, order=4):
+    """
+    -- Se define y crea el filtro segun la necesidad de la senal
+    """
     b, a = butter(order, [lowcut/(fs/2), highcut/(fs/2)], btype='band')
     filtered = filtfilt(b, a, signal)
     return filtered, b, a
 
 
 def graficar_filtro(b, a, fs):
+    """
+    -- Funcion para graficar filtros
+    """
     w, h = freqz(b, a, worN=8000)
     plt.figure(figsize=(12, 4))
     plt.plot(w * fs / (2 * np.pi), 20 * np.log10(abs(h)))
@@ -96,7 +102,7 @@ def detectar_onset_offset_auto(rms_signal, t, min_ratio=0.05, max_ratio=0.4, ste
         onsets = np.where(np.diff(active.astype(int)) == 1)[0]
         offsets = np.where(np.diff(active.astype(int)) == -1)[0]
 
-        # ⚙️ Asegurar que los pares estén alineados
+        # Asegurar que los pares estén alineados
         if len(onsets) > 0 and len(offsets) > 0:
             # Caso 1: primer offset ocurre antes del primer onset → descartarlo
             if offsets[0] < onsets[0]:
@@ -112,7 +118,7 @@ def detectar_onset_offset_auto(rms_signal, t, min_ratio=0.05, max_ratio=0.4, ste
 
             if len(onsets) > 0:
                 if verbose:
-                    print(f"✅ Detección con threshold_ratio = {ratio:.2f}")
+                    print(f"Detección con threshold_ratio = {ratio:.2f}")
                     print(f"Pares válidos: {len(onsets)} (onsets y offsets)")
                 return onsets, offsets, ratio, threshold
 
@@ -168,13 +174,13 @@ def pan_tompkins(signal, fs):
 
     # 2. Derivada
     diff = np.diff(filtered)
-    t_diff = t[1:]  # por la derivada
+    t_diff = t[1:]
 
     # 3. Cuadrado
     squared = diff ** 2
     t_squared = t_diff
 
-    # 4. Integración (ventana de 150 ms)
+    # 4. Integración
     window_size = int(0.150 * fs)
     integrated = np.convolve(squared, np.ones(window_size)/window_size, mode='same')
     t_integrated = t[:len(integrated)]  # ajustar al largo de la señal
@@ -307,7 +313,7 @@ def graficar_resultados_emg(t, emg_original, emg_filtrada, tk_signal, rms, t_rms
         if o_start < len(t_rms) and o_end < len(t_rms):
             plt.axvline(t_rms[o_start], color='green', linestyle='--', label='Onset' if first_onset else "")
             plt.axvline(t_rms[o_end], color='red', linestyle='--', label='Offset' if first_offset else "")
-            plt.axvspan(t_rms[o_start], t_rms[o_end], color='orange', alpha=0.2)  # sombra entre inicio y fin
+            plt.axvspan(t_rms[o_start], t_rms[o_end], color='orange', alpha=0.2)
             first_onset = False
             first_offset = False
 
