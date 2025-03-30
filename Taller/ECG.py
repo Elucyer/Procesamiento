@@ -1,14 +1,14 @@
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from Taller.main import cargar_senal, graficar_senal, fft_y_espectrograma, detectar_picos_r, calcular_frecuencia_cardiaca
+from Taller.main import cargar_senal, graficar_senal, fft_y_espectrograma, calcular_frecuencia_cardíaca_pantompkin, pan_tompkins
 
 # Cambia el nombre del archivo y el tipo según el caso:
-# Para ECG en CSV:
-# ecg_signal, t, fs = cargar_senal('ecg_data.csv', tipo='csv', fs=360)
+# Para ECG en mp4:
+# ecg_signal, t, fs = cargar_senal('ecg_data.mp4', tipo='mp4')
 
 # Para archivo de audio en mp3 o mp4:
-ecg_signal, t, fs = cargar_senal('/Users/janerperez/Documents/Universidad/Procesamiento/Audios/audio-main/AIns.mp4', tipo='mp4')  # Se detecta automáticamente el fs real del archivo
+ecg_signal, t, fs = cargar_senal('/Users/janerperez/Documents/Universidad/Procesamiento/Audios/audio-main/AIns.mp4', tipo='mp4')
 
 # Graficar señal
 graficar_senal(t, ecg_signal, "Señal ECG o Audio", ylabel="Amplitud")
@@ -16,7 +16,10 @@ graficar_senal(t, ecg_signal, "Señal ECG o Audio", ylabel="Amplitud")
 # FFT y espectrograma
 fft_y_espectrograma(ecg_signal, fs)
 
-# Detección de picos R (solo aplicable si es una señal ECG válida)
-peaks = detectar_picos_r(ecg_signal, fs)
-hr = calcular_frecuencia_cardiaca(peaks, fs)
-print(f"Frecuencia cardíaca estimada: {hr:.2f} bpm")
+# Llamar al algoritmo de Pan-Tompkins
+peaks_pan = pan_tompkins(ecg_signal, fs)
+
+# Calcular BPM y mostrar resultados
+bpm, n_picos = calcular_frecuencia_cardíaca_pantompkin(peaks_pan, fs)
+print(f"Picos R detectados: {n_picos}")
+print(f"Frecuencia cardíaca estimada: {bpm:.2f} BPM")

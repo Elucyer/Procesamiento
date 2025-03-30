@@ -4,7 +4,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from Taller.main import fft_y_espectrograma, graficar_senal, detectar_picos_r, calcular_frecuencia_cardiaca, cargar_senal
 
 # Cargar señal ECG
-ecg_signal, t, fs = cargar_senal('ecg_data.csv', tipo='csv', fs=360)
+ecg_signal, t, fs = cargar_senal('/Users/janerperez/Documents/Universidad/Procesamiento/Audios/audio-main/ASV.mp4', tipo='mp4',)
 
 # Graficar
 graficar_senal(t, ecg_signal, "ECG")

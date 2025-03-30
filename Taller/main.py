@@ -101,6 +101,68 @@ def graficar_onset_offset(t, rms_signal, onsets, offsets):
     plt.show()
 
 
+def pan_tompkins(signal, fs):
+    # Tiempo original
+    t = np.linspace(0, len(signal) / fs, len(signal))
+
+    # 1. Filtro pasa banda (5–15 Hz)
+    def bandpass_filter(sig, lowcut=5.0, highcut=15.0, fs=360, order=2):
+        nyq = 0.5 * fs
+        low = lowcut / nyq
+        high = highcut / nyq
+        b, a = butter(order, [low, high], btype='band')
+        return filtfilt(b, a, sig)
+
+    filtered = bandpass_filter(signal, fs=fs)
+
+    # 2. Derivada
+    diff = np.diff(filtered)
+    t_diff = t[1:]  # por la derivada
+
+    # 3. Cuadrado
+    squared = diff ** 2
+    t_squared = t_diff
+
+    # 4. Integración (ventana de 150 ms)
+    window_size = int(0.150 * fs)
+    integrated = np.convolve(squared, np.ones(window_size)/window_size, mode='same')
+    t_integrated = t[:len(integrated)]  # ajustar al largo de la señal
+
+    # 5. Detección de picos
+    threshold = np.mean(integrated) * 1.5
+    peaks, _ = find_peaks(integrated, height=threshold, distance=int(0.2 * fs))
+
+    # --------- GRAFICAR LOS PASOS ---------
+    plt.figure(figsize=(12, 10))
+
+    plt.subplot(5, 1, 1)
+    plt.plot(t, signal)
+    plt.title("ECG Original")
+
+    plt.subplot(5, 1, 2)
+    plt.plot(t, filtered)
+    plt.title("ECG Filtrado (5–15 Hz)")
+
+    plt.subplot(5, 1, 3)
+    plt.plot(t_diff, diff)
+    plt.title("Derivada")
+
+    plt.subplot(5, 1, 4)
+    plt.plot(t_squared, squared)
+    plt.title("Señal Cuadrada")
+
+    plt.subplot(5, 1, 5)
+    plt.plot(t_integrated, integrated)
+    plt.plot(t_integrated[peaks], integrated[peaks], 'ro')
+    plt.title("Integración y Picos R detectados")
+    plt.xlabel("Tiempo (s)")
+
+    plt.tight_layout()
+    plt.show()
+
+    return peaks
+
+
 def fft_y_espectrograma(signal, fs):
     N = len(signal)
     f = np.fft.fftfreq(N, 1/fs)
@@ -134,26 +196,28 @@ def fft_y_espectrograma(signal, fs):
     plt.show()
 
 
-def detectar_picos_r(ecg_signal, fs):
-    ecg_diff = np.diff(ecg_signal)
-    ecg_sq = ecg_diff ** 2
-    ecg_integrated = np.convolve(ecg_sq, np.ones(30)/30, mode='same')
+def calcular_frecuencia_cardíaca_pantompkin(peaks, fs):
+    """
+    Calcula la frecuencia cardíaca en BPM a partir de los índices de los picos R.
 
-    peaks, _ = find_peaks(ecg_integrated, distance=fs*0.3, height=np.max(ecg_integrated)*0.5)
+    Parámetros:
+    - peaks: array de índices de los picos R
+    - fs: frecuencia de muestreo (Hz)
 
-    plt.figure(figsize=(10, 6))
-    plt.plot(ecg_integrated)
-    plt.plot(peaks, ecg_integrated[peaks], 'rx')
-    plt.title("Detección de picos R")
-    plt.xlabel("Muestras")
-    plt.ylabel("Amplitud")
-    plt.grid(True)
-    plt.show()
+    Retorna:
+    - bpm: frecuencia cardíaca estimada (latidos por minuto)
+    - cantidad de picos detectados
+    """
 
-    return peaks
+    # Si hay menos de 2 picos, no se puede calcular diferencia
+    if len(peaks) < 2:
+        return 0, 0
 
-def calcular_frecuencia_cardiaca(peaks, fs):
-    tiempos_r = peaks / fs
-    rr_intervals = np.diff(tiempos_r)
-    hr_bpm = 38 / np.mean(rr_intervals)
-    return hr_bpm
+    # Duración total en segundos entre el primer y último pico
+    duracion_seg = (peaks[-1] - peaks[0]) / fs
+    cantidad_latidos = len(peaks)
+
+    # BPM = latidos / minutos
+    bpm = (cantidad_latidos / duracion_seg) * 60
+
+    return bpm, cantidad_latidos
