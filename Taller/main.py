@@ -13,16 +13,26 @@ from scipy.fftpack import fft
 def cargar_senal(filepath, tipo='mat', variable='emg', fs=None):
     """
     Carga una señal desde un archivo .mat, .csv, .wav, .mp3, .mp4
+    y devuelve la señal, el vector de tiempo y la frecuencia de muestreo.
     """
     if tipo == 'mat':
         data = loadmat(filepath)
-        signal = data[variable][:, 0]
+
+        if variable not in data:
+            posibles = [k for k in data.keys() if not k.startswith('__')]
+            if len(posibles) == 1:
+                variable = posibles[0]
+            else:
+                raise KeyError(f"Variable '{variable}' no encontrada. Variables disponibles: {posibles}")
+        signal = np.squeeze(data[variable])
+        if isinstance(signal[0], np.ndarray) and signal[0].ndim == 2:
+            signal = np.concatenate([x.flatten() for x in signal])
         if fs is None:
-            fs = 1000  # Asume 1000 Hz por defecto
+            fs = 1000
     elif tipo == 'csv':
         signal = np.loadtxt(filepath, delimiter=',')
         if fs is None:
-            fs = 360  # ECG común
+            fs = 360
     elif tipo in ['wav', 'mp3', 'mp4']:
         signal, fs = librosa.load(filepath, sr=None, mono=True)
     else:
@@ -69,12 +79,46 @@ def teager_kaiser(signal):
 def calcular_rms(signal, window_size):
     return np.sqrt(np.convolve(signal**2, np.ones(window_size)/window_size, mode='valid'))
 
-def detectar_onset_offset(rms_signal, t, threshold_ratio=0.4):
-    threshold = np.max(rms_signal) * threshold_ratio
-    active = rms_signal > threshold
-    onsets = np.where(np.diff(active.astype(int)) == 1)[0]
-    offsets = np.where(np.diff(active.astype(int)) == -1)[0]
-    return onsets, offsets, threshold
+def detectar_onset_offset_auto(rms_signal, t, min_ratio=0.05, max_ratio=0.4, step=0.05, verbose=True):
+    """
+    Detecta onsets y offsets ajustando automáticamente el threshold.
+    Asegura que cada onset tenga un offset posterior.
+
+    Retorna:
+    - onsets: índices de inicio
+    - offsets: índices de fin
+    - threshold_ratio usado
+    - threshold absoluto
+    """
+    for ratio in np.arange(max_ratio, min_ratio - step, -step):
+        threshold = np.max(rms_signal) * ratio
+        active = rms_signal > threshold
+        onsets = np.where(np.diff(active.astype(int)) == 1)[0]
+        offsets = np.where(np.diff(active.astype(int)) == -1)[0]
+
+        # ⚙️ Asegurar que los pares estén alineados
+        if len(onsets) > 0 and len(offsets) > 0:
+            # Caso 1: primer offset ocurre antes del primer onset → descartarlo
+            if offsets[0] < onsets[0]:
+                offsets = offsets[1:]
+
+            # Caso 2: más onsets que offsets → quitar el último onset
+            if len(onsets) > len(offsets):
+                onsets = onsets[:len(offsets)]
+
+            # Caso 3: más offsets que onsets → quitar el último offset
+            elif len(offsets) > len(onsets):
+                offsets = offsets[:len(onsets)]
+
+            if len(onsets) > 0:
+                if verbose:
+                    print(f"✅ Detección con threshold_ratio = {ratio:.2f}")
+                    print(f"Pares válidos: {len(onsets)} (onsets y offsets)")
+                return onsets, offsets, ratio, threshold
+
+    if verbose:
+        print("⚠️ No se detectaron pares válidos de onset/offset.")
+    return [], [], None, None
 
 
 def graficar_senal(t, signal, titulo="Señal", xlabel="Tiempo (s)", ylabel="Amplitud"):
@@ -86,16 +130,23 @@ def graficar_senal(t, signal, titulo="Señal", xlabel="Tiempo (s)", ylabel="Ampl
     plt.grid(True)
     plt.show()
 
-def graficar_onset_offset(t, rms_signal, onsets, offsets):
+def graficar_onset_offset(t, onsets, offsets):
     plt.figure(figsize=(12, 4))
-    plt.plot(t[:len(rms_signal)], rms_signal, label='RMS')
+    first_onset = True
     for o in onsets:
-        plt.axvline(t[o], color='g', linestyle='--', label='Onset')
+        label = 'Onset' if first_onset else ""
+        plt.axvline(t[o], color='g', linestyle='--', label=label)
+        first_onset = False
+
+    first_offset = True
     for o in offsets:
-        plt.axvline(t[o], color='r', linestyle='--', label='Offset')
-    plt.title("Onset y Offset sobre RMS")
+        label = 'Offset' if first_offset else ""
+        plt.axvline(t[o], color='r', linestyle='--', label=label)
+        first_offset = False
+
+    plt.title("Onset y Offset")
     plt.xlabel("Tiempo (s)")
-    plt.ylabel("Amplitud RMS")
+    plt.ylabel("Amplitud")
     plt.legend()
     plt.grid(True)
     plt.show()
@@ -221,3 +272,142 @@ def calcular_frecuencia_cardíaca_pantompkin(peaks, fs):
     bpm = (cantidad_latidos / duracion_seg) * 60
 
     return bpm, cantidad_latidos
+
+
+def graficar_resultados_emg(t, emg_original, emg_filtrada, tk_signal, rms, t_rms, onsets, offsets):
+    """
+    Genera una figura con subplots mostrando:
+    - EMG original
+    - EMG filtrada con Onset/Offset + regiones sombreadas
+    - Teager-Kaiser
+    - RMS
+    """
+    tk_time = t[1:-1]  # Ajustar tiempo para Teager-Kaiser
+
+    plt.figure(figsize=(12, 10))
+
+    # 1. Señal original
+    plt.subplot(4, 1, 1)
+    plt.plot(t, emg_original)
+    plt.title("EMG Original")
+    plt.xlabel("Tiempo (s)")
+    plt.ylabel("Amplitud")
+    plt.grid(True)
+
+    # 2. EMG Filtrada + Onset/Offset + Regiones activas
+    plt.subplot(4, 1, 2)
+    plt.plot(t, emg_filtrada, label='EMG Filtrada')
+
+    # Dibujar líneas y sombrear regiones entre onsets y offsets
+    first_onset = True
+    first_offset = True
+    for i in range(min(len(onsets), len(offsets))):
+        o_start = onsets[i]
+        o_end = offsets[i]
+        if o_start < len(t_rms) and o_end < len(t_rms):
+            plt.axvline(t_rms[o_start], color='green', linestyle='--', label='Onset' if first_onset else "")
+            plt.axvline(t_rms[o_end], color='red', linestyle='--', label='Offset' if first_offset else "")
+            plt.axvspan(t_rms[o_start], t_rms[o_end], color='orange', alpha=0.2)  # sombra entre inicio y fin
+            first_onset = False
+            first_offset = False
+
+    plt.title("EMG Filtrada (20–450 Hz) + Onset/Offset + Contracciones")
+    plt.xlabel("Tiempo (s)")
+    plt.ylabel("Amplitud")
+    plt.grid(True)
+    plt.legend()
+
+    # 3. Teager-Kaiser
+    plt.subplot(4, 1, 3)
+    plt.plot(tk_time, tk_signal)
+    plt.title("Operador Teager-Kaiser")
+    plt.xlabel("Tiempo (s)")
+    plt.ylabel("Energía")
+    plt.grid(True)
+
+    # 4. RMS
+    plt.subplot(4, 1, 4)
+    plt.plot(t_rms, rms, label="RMS")
+    plt.title("RMS de la Señal EMG (post-TK)")
+    plt.xlabel("Tiempo (s)")
+    plt.ylabel("RMS")
+    plt.grid(True)
+    plt.legend()
+
+    plt.tight_layout()
+    plt.show()
+
+
+def recortar_segmento(t, signal, t_min, t_max):
+    indices = np.where((t >= t_min) & (t <= t_max))[0]
+    return signal[indices], t[indices]
+
+
+def graficar_teager_y_rms(t_tk, tk_signal, t_rms, rms):
+    """
+    Gráfico con 2 subplots:
+    - Teager-Kaiser (energía de la señal EMG)
+    - RMS de la señal TK con ventana deslizante
+    """
+    plt.figure(figsize=(12, 6))
+
+    # Subplot 1: Teager-Kaiser
+    plt.subplot(2, 1, 1)
+    plt.plot(t_tk, tk_signal, label='Teager-Kaiser', color='blue')
+    plt.title("Señal EMG - Operador Teager-Kaiser")
+    plt.xlabel("Tiempo (s)")
+    plt.ylabel("Energía")
+    plt.grid(True)
+    plt.legend()
+
+    # Subplot 2: RMS del TK
+    plt.subplot(2, 1, 2)
+    plt.plot(t_rms, rms, label='RMS', color='red')
+    plt.title("RMS de la Señal Teager-Kaiser con Ventana Deslizante")
+    plt.xlabel("Tiempo (s)")
+    plt.ylabel("Valor RMS")
+    plt.grid(True)
+    plt.legend()
+
+    plt.tight_layout()
+    plt.show()
+
+
+def graficar_zoom_contracciones(t_rms, rms, onsets, offsets, zoom_duracion=2):
+    """
+    Genera subplots con zoom a cada par onset-offset usando RMS.
+    - zoom_duracion: tiempo total (en segundos) a mostrar alrededor del evento
+    """
+    plt.figure(figsize=(12, len(onsets) * 2))
+
+    for i in range(len(onsets)):
+        if i >= len(offsets):
+            break
+
+        onset_time = t_rms[onsets[i]]
+        offset_time = t_rms[offsets[i]]
+
+        # Definir ventana de zoom (centrada en el evento)
+        zoom_center = (onset_time + offset_time) / 2
+        zoom_range = zoom_duracion / 2
+        t_min = zoom_center - zoom_range
+        t_max = zoom_center + zoom_range
+
+        # Sombra para el rango
+        mask = (t_rms >= t_min) & (t_rms <= t_max)
+
+        plt.subplot(len(onsets), 1, i + 1)
+        plt.plot(t_rms[mask], rms[mask], label="RMS", color='blue')
+        plt.axvline(onset_time, color='green', linestyle='--', label='Onset')
+        plt.axvline(offset_time, color='red', linestyle='--', label='Offset')
+        plt.axvspan(onset_time, offset_time, color='orange', alpha=0.3)
+
+        plt.title(f"Zoom Contracción {i+1}")
+        plt.xlabel("Tiempo (s)")
+        plt.ylabel("RMS")
+        plt.grid(True)
+        if i == 0:
+            plt.legend()
+
+    plt.tight_layout()
+    plt.show()
