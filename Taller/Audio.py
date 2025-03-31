@@ -6,7 +6,7 @@ from Taller.main import cargar_audios_desde_carpeta, escuchar_y_animar_audio, ff
 ## El audio 5 varia segun la organizacion que se tenga en este caso para nosotros sea el audio #7 el CPE.mp4
 
 # Ruta donde estan los audios modificar segun lugar donde se guardan
-carpeta_audios = "/Users/janerperez/Documents/Universidad/Procesamiento/Audios/audio-main"
+carpeta_audios = "/content/Procesamiento/Audios/audio-main"
 
 # listar los audios en la carpeta segun las extensiones abmitidas
 audios = cargar_audios_desde_carpeta(carpeta_audios)
