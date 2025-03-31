@@ -19,8 +19,8 @@ for i, name in enumerate(audios.keys()):
 # Muestra mensaje en pantalla para que se pueda escoger el audio que se desea escuchar si se aplica las recomendaciones de la linea 20 y 21 de resto ejecuta el audio por defecto 
 ## Si se desea que la interfaz sea mas interactiva y que el usuario pueda decidir que audio escuchar descomentar la linea 22
 ## y la linea  23 reemplazarla por ----> nombre_seleccionado = list(audios.keys())[index]
-#index = int(input("\nIngresa el número del audio que quieres usar: "))
-nombre_seleccionado = list(audios.keys())[7]
+index = int(input("\nIngresa el número del audio que quieres usar: "))
+nombre_seleccionado = list(audios.keys())[index]
 audio = audios[nombre_seleccionado]
 data = audio['data']
 samplerate = audio['samplerate']
