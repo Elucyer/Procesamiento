@@ -448,20 +448,28 @@ def cargar_audios_desde_carpeta(carpeta):
     return audios
 
 def escuchar_y_animar_audio(nombre, data, samplerate):
-    print(f"\n▶️ Reproduciendo: {nombre}")
+    from IPython.display import Audio, display
 
-    # Define la duracion total del audio y lo ajusta segun la grafica en tiempo real
+    print(f"\n▶️ Reproduciendo: {nombre}")
     duracion = len(data) / samplerate
     t = np.linspace(0, duracion, num=len(data))
 
-    # Crea un evento independiente donde se reproduce el audio al mismo tiempo que se muestra la grafica
-    def reproducir():
-        sd.play(data, samplerate)
-        sd.wait()
+    def reproducir_audio():
+        if 'google.colab' in sys.modules:
+            display(Audio(data, rate=samplerate))
+        else:
+            try:
+                sd.play(data, samplerate)
+                sd.wait()
+            except ImportError:
+                print("❌ sounddevice no está instalado. Usa `pip install sounddevice`")
 
-    # Ejecuta el evento en un hilo al mismo tiempo que aparece la grafica en pantalla
-    hilo_audio = threading.Thread(target=reproducir)
-    hilo_audio.start()
+    # Si NO estás en Colab → lanzar hilo para reproducir en paralelo
+    if 'google.colab' not in sys.modules:
+        hilo_audio = threading.Thread(target=reproducir_audio)
+        hilo_audio.start()
+    else:
+        reproducir_audio()
 
     # Gráfico y muestra el audio en pantalla
     fig, ax = plt.subplots(figsize=(10, 4))
@@ -489,4 +497,6 @@ def escuchar_y_animar_audio(nombre, data, samplerate):
     plt.tight_layout()
     plt.show()
 
-    hilo_audio.join()
+    # Esperar finalización del hilo si se usó
+    if 'google.colab' not in sys.modules:
+        hilo_audio.join()
