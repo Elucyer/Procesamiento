@@ -7,7 +7,7 @@ from Taller.main import cargar_senal, graficar_senal, filtrar_senal, graficar_fi
                         graficar_zoom_contracciones
 
 # Cargar señal ECG
-emg_signal, t, fs = cargar_senal('/Users/janerperez/Documents/Universidad/Procesamiento/Audios/Senales/musculos1.mat', tipo='mat', variable='musculos')
+emg_signal, t, fs = cargar_senal('/content/Procesamiento/Audios/Senales/musculos1.mat', tipo='mat', variable='musculos')
 
 # Recortar la senal en el tiempo para una mejor visualizacion 
 emg_recortada, t_recortado = recortar_segmento(t, emg_signal, 1000, 2500)

@@ -4,7 +4,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from Taller.main import cargar_senal, graficar_senal, fft_y_espectrograma, calcular_frecuencia_cardíaca_pantompkin, pan_tompkins
 
 # Leer archivo de audio en mp3 o mp4:
-ecg_signal, t, fs = cargar_senal('/Users/janerperez/Documents/Universidad/Procesamiento/Audios/audio-main/AIns.mp4', tipo='mp4')
+ecg_signal, t, fs = cargar_senal('/content/Procesamiento/Audios/audio-main/AIns.mp4', tipo='mp4')
 
 # Graficar señal
 graficar_senal(t, ecg_signal, "Señal ECG o Audio", ylabel="Amplitud")
