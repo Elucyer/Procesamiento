@@ -1,12 +1,16 @@
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-import numpy as np
-import matplotlib.pyplot as plt
-import librosa
-from scipy.io import loadmat
 from scipy.signal import butter, filtfilt, freqz, tf2zpk, spectrogram, find_peaks
+from matplotlib.animation import FuncAnimation
+import matplotlib.pyplot as plt
+from scipy.io import loadmat
 from scipy.fftpack import fft
+import sounddevice as sd
+import soundfile as sf
+import numpy as np
+import threading
+import librosa
 
 
 
@@ -417,3 +421,72 @@ def graficar_zoom_contracciones(t_rms, rms, onsets, offsets, zoom_duracion=2):
 
     plt.tight_layout()
     plt.show()
+
+def cargar_audios_desde_carpeta(carpeta):
+    """
+    -- Esta funcion sirve para listar los elementos de una carpeta en este caso audios
+    -- en diferentes formatos
+    """
+    extensiones_validas = ('.wav', '.flac', '.aiff', '.aif', '.mp3', '.mp4')
+    audio_files = [f for f in os.listdir(carpeta) if f.lower().endswith(extensiones_validas)]
+
+    audios = {}
+    for filename in audio_files:
+        path = os.path.join(carpeta, filename)
+        try:
+            if filename.lower().endswith(('.mp3', '.mp4')):
+                data, samplerate = librosa.load(path, sr=None, mono=True)
+            else:
+                data, samplerate = sf.read(path)
+                if data.ndim > 1:
+                    data = np.mean(data, axis=1)
+            audios[filename] = {'data': data, 'samplerate': samplerate}
+            print(f"Cargado: {filename}")
+        except Exception as e:
+            print(f"Error cargando {filename}: {e}")
+
+    return audios
+
+def escuchar_y_animar_audio(nombre, data, samplerate):
+    print(f"\n▶️ Reproduciendo: {nombre}")
+
+    # Define la duracion total del audio y lo ajusta segun la grafica en tiempo real
+    duracion = len(data) / samplerate
+    t = np.linspace(0, duracion, num=len(data))
+
+    # Crea un evento independiente donde se reproduce el audio al mismo tiempo que se muestra la grafica
+    def reproducir():
+        sd.play(data, samplerate)
+        sd.wait()
+
+    # Ejecuta el evento en un hilo al mismo tiempo que aparece la grafica en pantalla
+    hilo_audio = threading.Thread(target=reproducir)
+    hilo_audio.start()
+
+    # Gráfico y muestra el audio en pantalla
+    fig, ax = plt.subplots(figsize=(10, 4))
+    ax.plot(t, data, label='Audio')
+    barra = ax.axvline(0, color='red', linestyle='--', label='Posición actual')  # barra animada
+    ax.set_xlim(0, duracion)
+    ax.set_ylim(np.min(data) * 1.1, np.max(data) * 1.1)
+    ax.set_xlabel("Tiempo (s)")
+    ax.set_ylabel("Amplitud")
+    ax.set_title(f"Reproduciendo: {nombre}")
+    ax.grid(True)
+    ax.legend()
+
+    # Actualiza una barra de progreso que corresponde al tiempo del audio en la grafica
+    def actualizar(frame):
+        tiempo_actual = frame / fps
+        barra.set_xdata([tiempo_actual, tiempo_actual])
+        return barra,
+
+    fps = 30
+    total_frames = int(duracion * fps)
+
+    anim = FuncAnimation(fig, actualizar, frames=total_frames, interval=1000/fps, blit=True)
+
+    plt.tight_layout()
+    plt.show()
+
+    hilo_audio.join()
