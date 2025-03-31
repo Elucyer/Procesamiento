@@ -6,7 +6,6 @@ from matplotlib.animation import FuncAnimation
 import matplotlib.pyplot as plt
 from scipy.io import loadmat
 from scipy.fftpack import fft
-import sounddevice as sd
 import soundfile as sf
 import numpy as np
 import threading
@@ -459,6 +458,7 @@ def escuchar_y_animar_audio(nombre, data, samplerate):
             display(Audio(data, rate=samplerate))
         else:
             try:
+                import sounddevice as sd
                 sd.play(data, samplerate)
                 sd.wait()
             except ImportError:
