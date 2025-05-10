@@ -26,7 +26,7 @@ for idx, ruta in enumerate(imagenes, start=1):
     imagen_gray = convertir_grises(imagen)
     imagen_bin = convertir_binaria(imagen_gray)
     imagen_tozero = convertir_tozero(imagen_gray)
-    imagen_fourier = transformada_fourier(imagen_gray)
+    imagen_fourier = transformada_fourier(imagen)
     imagen_wavelet = transformada_wavelet(imagen_gray)
 
     x, y, w, h = encontrar_roi(imagen_gray)

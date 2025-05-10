@@ -18,14 +18,45 @@ def convertir_tozero(imagen_gray):
     _, tozero = cv2.threshold(imagen_gray, 127, 255, cv2.THRESH_TOZERO)
     return tozero
 
-def transformada_fourier(imagen_gray):
-    dft = cv2.dft(np.float32(imagen_gray), flags=cv2.DFT_COMPLEX_OUTPUT)
-    dft_shift = np.fft.fftshift(dft)
-    magnitud = 20 * np.log(cv2.magnitude(dft_shift[:, :, 0], dft_shift[:, :, 1]) + 1)
-    
-    magnitud_norm = cv2.normalize(magnitud, None, 0, 255, cv2.NORM_MINMAX)
-    
-    return np.uint8(magnitud_norm)
+def transformada_fourier(imagen_bgr):
+    canales = cv2.split(imagen_bgr)  # Separar B, G, R
+    fourier_canales = []
+
+    for canal in canales:
+        # DFT
+        dft = cv2.dft(np.float32(canal), flags=cv2.DFT_COMPLEX_OUTPUT)
+        dft_shift = np.fft.fftshift(dft)
+        magnitud = cv2.magnitude(dft_shift[:, :, 0], dft_shift[:, :, 1])
+        magnitud_log = np.log1p(magnitud)
+        magnitud_norm = cv2.normalize(magnitud_log, None, 0, 255, cv2.NORM_MINMAX)
+        fourier_canales.append(np.uint8(magnitud_norm))
+
+    # Combinar canales de nuevo en una imagen BGR
+    return cv2.merge(fourier_canales)
+
+def reconstruccion_fourier_color(imagen_bgr):
+    canales = cv2.split(imagen_bgr)  # Separar B, G, R
+    reconstruidas = []
+
+    for canal in canales:
+        # DFT directa
+        dft = cv2.dft(np.float32(canal), flags=cv2.DFT_COMPLEX_OUTPUT)
+        dft_shift = np.fft.fftshift(dft)
+
+        # Volver a centrar las frecuencias (shift inverso)
+        f_ishift = np.fft.ifftshift(dft_shift)
+
+        # Transformada inversa
+        img_back = cv2.idft(f_ishift)
+        img_back_mag = cv2.magnitude(img_back[:, :, 0], img_back[:, :, 1])
+
+        # Normalizar para visualización
+        img_back_norm = cv2.normalize(img_back_mag, None, 0, 255, cv2.NORM_MINMAX)
+        reconstruidas.append(np.uint8(img_back_norm))
+
+    # Combinar canales nuevamente
+    return cv2.merge(reconstruidas)
+
 
 def transformada_wavelet(imagen_gray):
     import pywt
@@ -61,7 +92,7 @@ def mostrar_resultados(imagen_original, imagen_gray, binaria, tozero,
     gs = gridspec.GridSpec(3, 4)
 
     titulos = ["Original", "Grises", "Binaria", "ToZero",
-               "Fourier", "Wavelet", "Recorte", "Ecualizada"]
+               "Tranformada Fourier", "Tranformada Wavelet", "Imagen Recortada", "Ecualizada"]
     imagenes = [imagen_original, imagen_gray, binaria, tozero,
                 fourier, wavelet, imagen_crop, imagen_eq]
 
@@ -95,7 +126,7 @@ def guardar_resultados(nombre, imagen_original, imagen_gray, binaria, tozero,
     gs = gridspec.GridSpec(3, 4)  # 3 filas, 4 columnas
 
     titulos = ["Original", "Grises", "Binaria", "ToZero",
-               "Fourier", "Wavelet", "Recorte", "Ecualizada"]
+               "Tranformada Fourier", "Tranformada Wavelet", "Imagen Recortada", "Ecualizada"]
     imagenes = [imagen_original, imagen_gray, binaria, tozero,
                 fourier, wavelet, imagen_crop, imagen_eq]
 
