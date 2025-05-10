@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import os
+import pywt
 
 def cargar_imagen(ruta):
     return cv2.imread(ruta)
@@ -59,7 +60,6 @@ def reconstruccion_fourier_color(imagen_bgr):
 
 
 def transformada_wavelet(imagen_gray):
-    import pywt
     coeffs2 = pywt.dwt2(imagen_gray, 'haar')
     LL, (LH, HL, HH) = coeffs2
     return np.uint8(LL)
