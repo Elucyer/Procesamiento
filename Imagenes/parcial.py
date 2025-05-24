@@ -14,7 +14,7 @@ import pywt
 import pandas as pd
 
 # --- Carga de imagen ---
-image_path = r'C:\Users\Usuario\OneDrive\Documents\Proyectos\Universidad\Procesamiento\Imagenes\imagenes_manolo\parcial\tac-de-la-cabeza1.jpg'
+image_path = r'\tac-de-la-cabeza1.jpg'
 image = io.imread(image_path)
 
 if image.ndim == 3:
