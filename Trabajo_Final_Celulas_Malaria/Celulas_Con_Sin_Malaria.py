@@ -8,7 +8,7 @@ from kaggle.api.kaggle_api_extended import KaggleApi
 from main import cargar_imagen, mostrar_comparacion
 
 def descargar_dataset():
-    ruta_destino = r"C:\Users\Usuario\OneDrive\Documents\Proyectos\Universidad\Procesamiento\Trabajo_Final_Celulas_Malaria\celulas_malaria"
+    ruta_destino = r"/content/Procesamiento/Trabajo_Final_Celulas_Malaria/celulas_malaria"
     if not os.path.exists(ruta_destino):
         os.makedirs(ruta_destino)
         api = KaggleApi()
