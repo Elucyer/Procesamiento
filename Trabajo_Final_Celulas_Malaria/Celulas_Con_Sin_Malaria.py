@@ -19,8 +19,8 @@ def descargar_dataset():
 
 def main():
     ruta_dataset = descargar_dataset()
-    ruta_parasitadas = os.path.join(ruta_dataset, r"cell_images\Parasitized")
-    ruta_no_parasitadas = os.path.join(ruta_dataset, r"cell_images\Uninfected")
+    ruta_parasitadas = os.path.join(ruta_dataset, r"Parasitized")
+    ruta_no_parasitadas = os.path.join(ruta_dataset, r"Uninfected")
 
         # Obtener nombres de archivos PNG
     nombres_parasitadas = sorted([f for f in os.listdir(ruta_parasitadas) if f.endswith(".png")])[:10]
